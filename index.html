@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="shortcut icon" type="image/png" href="./icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="ChatGPT">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#ffffff">
+<title>Chat Interface</title>
+<style>
+:root{color-scheme:light;--bg:#fff;--panel:#fff;--text:#202123;--muted:#8b919b;--line:#e4e7ec;--soft:#f6f7f9;--blue:#2785f7;--blue-soft:#eaf3ff;--shadow:0 8px 28px rgba(22,34,51,.08)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",Arial,sans-serif;background:#fff;color:var(--text)}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+.app{height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;background:var(--bg)}
+.topbar{height:58px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 14px;gap:12px}
+.icon-btn{width:40px;height:40px;border:1px solid transparent;background:transparent;border-radius:50%;display:grid;place-items:center;color:#4d5561}
+.icon-btn:hover{background:var(--soft)}
+.icon-btn svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.top-left,.top-right{display:flex;align-items:center;gap:6px}
+.brand{font-size:17px;font-weight:650;letter-spacing:-.4px}
+.messages{flex:1;min-height:0;overflow:auto;padding:16px 18px 22px;scroll-behavior:smooth}
+.welcome{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;color:#a0a5ae;font-size:14px;padding:20px}
+.message{max-width:820px;width:100%;margin:0 auto 24px;display:flex;flex-direction:column;gap:7px}
+.message.user{align-items:flex-end}
+.role{font-size:12px;color:#8b919b;padding:0 4px}
+.bubble{max-width:min(100%,720px);white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;font-size:15px}
+.user .bubble{background:#f2f4f7;border-radius:20px;padding:11px 15px}
+.assistant .bubble{padding:0 4px}
+.bubble pre{white-space:pre-wrap;overflow:auto;background:#f6f7f9;padding:12px;border-radius:10px}
+.composer-wrap{flex-shrink:0;padding:8px 10px max(10px,env(safe-area-inset-bottom));background:linear-gradient(to bottom,rgba(255,255,255,0),#fff 16%)}
+.composer{display:flex;align-items:flex-end;gap:8px;border:1px solid #dfe3e9;border-radius:28px;padding:10px 10px 10px 17px;box-shadow:var(--shadow);background:#fff;min-height:66px}
+#prompt{resize:none;border:0;outline:0;flex:1;min-width:0;max-height:180px;min-height:42px;padding:10px 0 8px;color:#22262d;background:transparent;line-height:1.45}
+#prompt::placeholder{color:#9ba2ad;opacity:1}
+.send{flex:0 0 42px;width:42px;height:42px;border:0;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;transition:opacity .15s}
+.send:disabled{opacity:.45;cursor:default}
+.send svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+.status{height:15px;text-align:center;color:#9aa0aa;font-size:10px;padding-top:3px}
+.overlay{position:fixed;inset:0;background:rgba(25,30,40,.34);opacity:0;visibility:hidden;transition:opacity .24s,visibility .24s;z-index:10}
+.overlay.open{opacity:1;visibility:visible}
+.sidebar{position:fixed;z-index:11;inset:0 auto 0 0;width:min(80%,360px);background:#f8f9fb;transform:translateX(-102%);transition:transform .27s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;padding: max(20px,env(safe-area-inset-top)) 13px max(14px,env(safe-area-inset-bottom));box-shadow:8px 0 30px rgba(0,0,0,.08)}
+.sidebar.open{transform:translateX(0)}
+.sidebar-head{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 5px 0 8px;margin-bottom:19px}
+.sidebar-brand{font-size:22px;font-weight:650;letter-spacing:-.8px}
+.search-box{height:44px;display:flex;align-items:center;gap:9px;padding:0 13px;background:#fff;border:1px solid #e3e6eb;border-radius:15px;margin:0 2px 22px}
+.search-box svg{width:18px;height:18px;stroke:#8e95a0;fill:none;stroke-width:1.8;flex-shrink:0}
+.search-box input{border:0;outline:0;background:transparent;min-width:0;width:100%;font-size:14px;color:#252932}
+.search-box input::placeholder{color:#9ba1aa}
+.section-label{font-size:12px;font-weight:650;color:#858c97;padding:0 10px 8px;letter-spacing:.2px}
+.recent-list{overflow:auto;flex:1;min-height:0}
+.history-item{width:100%;border:0;background:transparent;border-radius:11px;text-align:left;padding:11px 10px;font-size:14px;color:#343942;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.history-item:hover,.history-item.current{background:#e9edf3}
+.history-empty{padding:12px 10px;font-size:13px;color:#8a919c;line-height:1.5}
+.sidebar-bottom{padding-top:12px;border-top:1px solid #e7e9ee}
+.new-chat{width:100%;border:1px solid #e0e4ea;background:#fff;border-radius:14px;padding:11px 12px;text-align:left;color:#3b424d;font-size:14px}
+.modal-backdrop{position:fixed;inset:0;background:rgba(18,24,34,.38);z-index:20;display:none;align-items:center;justify-content:center;padding:18px}
+.modal-backdrop.open{display:flex}
+.modal{width:min(100%,420px);border-radius:22px;background:#fff;padding:22px;box-shadow:0 20px 70px rgba(0,0,0,.2)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.modal h2{font-size:18px;margin:0;font-weight:650}
+.modal label{display:block;font-size:13px;color:#606875;margin:14px 0 7px}
+.modal input{width:100%;border:1px solid #dfe3e9;border-radius:12px;padding:12px;outline:none}
+.modal input:focus,.settings-select:focus{border-color:var(--blue)}
+.settings-select{width:100%;border:1px solid #dfe3e9;border-radius:12px;padding:12px 34px 12px 12px;background-color:#fff;color:#252932;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2716%27 height=%2716%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23606875%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27m6 9 6 6 6-6%27/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 22px center;background-size:16px 16px}
+.help{font-size:12px;color:#858c97;line-height:1.5;margin-top:9px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.backup-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.backup-actions .action{min-height:42px;padding:9px 8px;font-size:13px}
+.delete-modal{max-width:340px;text-align:center}.delete-modal .modal-actions{margin-top:22px}.delete-modal .action{min-height:42px}
+.history-item{touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.action{border:1px solid #e0e4ea;background:#fff;color:#414854;padding:10px 14px;border-radius:12px}
+.action.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.error{color:#c33;font-size:13px;white-space:pre-wrap;padding:8px 4px}
+/* Inline source pills and bottom-sheet link previews */
+.source-pill{display:inline-flex;align-items:center;vertical-align:baseline;max-width:100%;margin:2px 2px;padding:3px 10px;border:1px solid #e2e5e9;border-radius:999px;background:#fff;color:#4c5562;font-size:.88em;line-height:1.45;cursor:pointer;white-space:nowrap}
+.source-pill:hover{background:#f6f7f9;border-color:#cfd5dd}
+.preview-backdrop{position:fixed;inset:0;background:rgba(20,25,34,.48);z-index:40;opacity:0;visibility:hidden;transition:opacity .22s,visibility .22s}
+.preview-backdrop.open{opacity:1;visibility:visible}
+.preview-sheet{position:fixed;z-index:41;left:10px;right:10px;bottom:10px;height:min(20dvh,220px);min-height:155px;transform:translateY(calc(100% + 20px));transition:transform .25s cubic-bezier(.2,.8,.2,1);background:#fff;border:1px solid #e5e8ed;border-radius:24px;box-shadow:0 12px 40px rgba(0,0,0,.18);padding:15px 17px max(13px,env(safe-area-inset-bottom));overflow:auto}
+.preview-sheet.open{transform:translateY(0)}
+.preview-top{display:flex;align-items:center;gap:10px;min-width:0;margin-bottom:9px}
+.preview-favicon{width:28px;height:28px;border-radius:8px;object-fit:contain;flex-shrink:0;background:#f5f6f8;padding:3px}
+.preview-site{min-width:0;flex:1}
+.preview-site-name{font-size:13px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.preview-domain{font-size:12px;color:#7c8490;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.preview-open{border:1px solid #e1e5eb;background:#fff;border-radius:999px;padding:7px 12px;font-size:12px;color:#333;flex-shrink:0}
+.preview-title{font-size:14px;font-weight:650;line-height:1.35;margin:2px 0 5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.preview-description{font-size:12px;line-height:1.45;color:#737b87;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.preview-url{font-size:11px;color:#8c939d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:7px}
+.preview-loading{color:#8b919b;font-size:13px}
+@media(min-width:760px){.topbar{padding:0 22px}.messages{padding-left:30px;padding-right:30px}.composer-wrap{padding-left:10px;padding-right:10px}.composer,.status{max-width:980px;margin-left:auto;margin-right:auto}.composer-wrap{width:100%}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="top-left">
+      <button class="icon-btn" id="menuBtn" aria-label="Open sidebar" title="Chat history">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <span class="brand">ChatGPT</span>
+    </div>
+    <div class="top-right">
+      <button class="icon-btn" id="settingsBtn" type="button" aria-label="Open settings" title="Settings" onclick="(function(){var m=document.getElementById('settingsModal');var s={};try{s=JSON.parse(localStorage.getItem('ota_chat_settings_v1')||'{}')}catch(e){};document.getElementById('apiKey').value=s.apiKey||'';document.getElementById('baseUrl').value=s.baseUrl||'';document.getElementById('modelSelect').value=s.model||'gpt-5.6-sol';m.classList.add('open');})();">
+        <span aria-hidden="true" style="font-size:23px;line-height:1;font-weight:500">⌘</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="messages" id="messages" aria-live="polite"></main>
+
+  <div class="composer-wrap">
+    <form class="composer" id="chatForm">
+      <textarea id="prompt" rows="1" placeholder="Ask ChatGPT" aria-label="Message input"></textarea>
+      <button class="send" id="sendBtn" aria-label="Send" title="Send" type="submit">
+        <svg viewBox="0 0 24 24"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg>
+      </button>
+    </form>
+    <div class="status" id="status"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<aside class="sidebar" id="sidebar" aria-label="Chat history sidebar">
+  <div class="sidebar-head">
+    <div class="sidebar-brand">ChatGPT</div>
+    <button class="icon-btn" id="closeSidebar" aria-label="Close sidebar">
+      <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
+  <form class="search-box" id="searchForm">
+    <svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
+    <input id="searchInput" type="search" placeholder="Search chat history" autocomplete="off" aria-label="Search chat history">
+  </form>
+  <div class="section-label" id="recentLabel">Recents</div>
+  <div class="recent-list" id="historyList"></div>
+  <div class="sidebar-bottom">
+    <button class="new-chat" id="newChatBtn">＋　New chat</button>
+  </div>
+</aside>
+
+<div class="modal-backdrop" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="settingsTitle">Settings</h2>
+      <button class="icon-btn" id="closeSettings" aria-label="Close settings">
+        <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <label for="modelSelect">Chat model</label>
+    <select id="modelSelect" class="settings-select">
+      <option value="gpt-5.6-sol">5.6 Sol</option>
+      <option value="gpt-5.6-terra">5.6 Terra</option>
+      <option value="gpt-5.6-luna">5.6 Luna</option>
+      <option value="gpt-5.4">5.4</option>
+      <option value="gpt-5.4-mini">5.4 mini</option>
+      <option value="gpt-5.4-nano">5.4 nano</option>
+      <option value="gpt-5.2">5.2</option>
+      <option value="gpt-5.2-pro">5.2 Pro</option>
+      <option value="o4-mini">o4-mini</option>
+      <option value="o3-pro">o3-pro</option>
+      <option value="o3-mini">o3-mini</option>
+      <option value="gpt-4.1">4.1</option>
+      <option value="gpt-4.1-mini">4.1 mini</option>
+      <option value="gpt-4o">4o</option>
+      <option value="gpt-4o-mini">4o mini</option>
+    </select>
+    <label for="apiKey">API Key</label>
+    <input id="apiKey" type="password" placeholder="Enter API key" autocomplete="off">
+    <div class="help">Your API key is stored in this browser. Avoid saving private keys on shared devices.</div>
+    <label for="baseUrl">API Base URL</label>
+    <input id="baseUrl" type="url" value="" placeholder="https://your-api.example/v1" spellcheck="false">
+    <div class="help">Make sure your API service allows cross-origin browser requests (CORS).</div>
+    <label>Chat history backup</label>
+    <div class="backup-actions">
+      <button class="action" id="exportBtn" type="button">Export chat history (JSON)</button>
+      <button class="action" id="importBtn" type="button">Import chat history (JSON)</button>
+    </div>
+    <input id="importFile" type="file" accept="application/json,.json" hidden>
+    <div class="help">Export includes all conversations. Import merges conversations; imported versions replace conversations with matching IDs.</div>
+    <div class="modal-actions">
+      <button class="action" id="cancelSettings">Cancel</button>
+      <button class="action primary" id="saveSettings">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="deleteModal" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+  <div class="modal delete-modal">
+    <h2 id="deleteTitle" style="margin:0 0 10px;font-size:18px">Confirm deletion</h2>
+    <div id="deleteQuestion" style="font-size:14px;line-height:1.6;color:#555d68;overflow-wrap:anywhere">Delete this conversation?</div>
+    <div class="modal-actions" style="display:flex;gap:10px">
+      <button class="action" id="cancelDelete" style="flex:1">Cancel</button>
+      <button class="action" id="confirmDelete" style="flex:1;background:#e53935;color:white;border-color:#e53935">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="preview-backdrop" id="previewBackdrop" aria-hidden="true"></div>
+<section class="preview-sheet" id="previewSheet" role="dialog" aria-modal="true" aria-label="Link preview">
+  <div class="preview-top">
+    <img class="preview-favicon" id="previewFavicon" alt="" src="">
+    <div class="preview-site"><div class="preview-site-name" id="previewSiteName">Website</div><div class="preview-domain" id="previewDomain"></div></div>
+    <button class="preview-open" id="previewOpen" type="button">Open link ↗</button>
+  </div>
+  <div class="preview-title" id="previewTitle">Loading page preview…</div>
+  <div class="preview-description" id="previewDescription"></div>
+  <div class="preview-url" id="previewUrl"></div>
+</section>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const STORAGE_KEY = 'ota_chat_conversations_v1';
+  const SETTINGS_KEY = 'ota_chat_settings_v1';
+  const models = {
+    'gpt-5.6-sol': '5.6 Sol',
+    'gpt-5.6-terra': '5.6 Terra',
+    'gpt-5.6-luna': '5.6 Luna',
+    'gpt-5.4': '5.4',
+    'gpt-5.4-mini': '5.4 mini',
+    'gpt-5.4-nano': '5.4 nano',
+    'gpt-5.2': '5.2',
+    'gpt-5.2-pro': '5.2 Pro',
+    'o4-mini': 'o4-mini',
+    'o3-pro': 'o3-pro',
+    'o3-mini': 'o3-mini',
+    'gpt-4.1': '4.1',
+    'gpt-4.1-mini': '4.1 mini',
+    'gpt-4o': '4o',
+    'gpt-4o-mini': '4o mini'
+  };
+  let selectedModel = 'gpt-5.6-sol';
+  let conversations = loadConversations();
+  let currentId = null;
+  let busy = false;
+  let searchTerm = '';
+  let pendingDeleteId = null;
+  let longPressTimer = null;
+  let suppressNextHistoryClick = false;
+
+  // IndexedDB is the primary durable store; localStorage remains a fallback.
+  const DB_NAME = 'ota_chat_persistent_v1';
+  const DB_STORE = 'records';
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) return reject(new Error('IndexedDB unavailable'));
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains(DB_STORE)) req.result.createObjectStore(DB_STORE); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('IndexedDB open failed'));
+    });
+  }
+  async function dbGet(key) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).get(key);
+      req.onsuccess = () => { db.close(); resolve(req.result); };
+      req.onerror = () => { db.close(); reject(req.error); };
+    });
+  }
+  async function dbPut(key, value) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(DB_STORE, 'readwrite');
+      tx.objectStore(DB_STORE).put(value, key);
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = tx.onabort = () => { db.close(); reject(tx.error || new Error('IndexedDB write failed')); };
+    });
+  }
+  function loadConversations() {
+    try { const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); return Array.isArray(value) ? value : []; }
+    catch { return []; }
+  }
+  function getSettings() {
+    try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); }
+    catch { return window.__otaSettingsCache || {}; }
+  }
+  async function getSettingsDurable() {
+    let s = getSettings();
+    if (!s.apiKey) { try { const saved = await dbGet(SETTINGS_KEY); if (saved && saved.apiKey) s = saved; } catch {} }
+    window.__otaSettingsCache = s;
+    return s;
+  }
+  function saveAll() {
+    const snapshot = JSON.stringify(conversations);
+    try { localStorage.setItem(STORAGE_KEY, snapshot); } catch (e) { setStatus('Local storage is unavailable. Trying browser database storage.'); }
+    dbPut(STORAGE_KEY, conversations).catch(() => setStatus('Unable to write to the browser database. Avoid private browsing and check site storage permissions.'));
+  }
+  function activeConversation() { return conversations.find(c => c.id === currentId) || null; }
+  function makeId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function startNewChat() {
+    currentId = null;
+    $('messages').innerHTML = '<div class="welcome">What would you like to talk about?</div>';
+    $('prompt').value = '';
+    resizePrompt();
+    renderHistory();
+    closeSidebar();
+    $('prompt').focus();
+  }
+  function ensureConversation(firstText) {
+    let c = activeConversation();
+    if (!c) {
+      c = {id:makeId(), title:makeTitle(firstText), createdAt:Date.now(), updatedAt:Date.now(), model:selectedModel, messages:[]};
+      conversations.unshift(c);
+      currentId = c.id;
+    } else if (!c.messages.length) c.title = makeTitle(firstText);
+    c.updatedAt = Date.now();
+    return c;
+  }
+  function makeTitle(text) {
+    const cleaned = String(text || '').replace(/\s+/g, ' ').trim();
+    return cleaned.length > 34 ? cleaned.slice(0, 34) + '…' : (cleaned || 'New chat');
+  }
+  function setStatus(text='') { $('status').textContent = text; }
+  function safeHttpUrl(raw) {
+    try { const u = new URL(raw); return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : null; }
+    catch { return null; }
+  }
+  function renderMessageContent(target, content) {
+    // Render Markdown-style links as compact domain pills; leave all other text escaped by text nodes.
+    const pattern = /\(?\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)\)?/g;
+    let last = 0, match;
+    while ((match = pattern.exec(content)) !== null) {
+      target.appendChild(document.createTextNode(content.slice(last, match.index)));
+      const url = safeHttpUrl(match[2]);
+      if (url) {
+        let domain;
+        try { domain = new URL(url).hostname.replace(/^www\./i, ''); } catch { domain = match[1]; }
+        const pill = document.createElement('button');
+        pill.type = 'button'; pill.className = 'source-pill'; pill.textContent = domain;
+        pill.setAttribute('aria-label', 'Preview link: ' + domain);
+        pill.addEventListener('click', () => openLinkPreview(url));
+        target.appendChild(pill);
+      } else target.appendChild(document.createTextNode(match[0]));
+      last = pattern.lastIndex;
+    }
+    target.appendChild(document.createTextNode(content.slice(last)));
+  }
+  let previewRequestId = 0;
+  let previewCurrentUrl = '';
+  function closeLinkPreview() {
+    $('previewBackdrop').classList.remove('open');
+    $('previewSheet').classList.remove('open');
+    $('previewBackdrop').setAttribute('aria-hidden', 'true');
+  }
+  async function openLinkPreview(url) {
+    const safeUrl = safeHttpUrl(url);
+    if (!safeUrl) return;
+    previewCurrentUrl = safeUrl;
+    const requestId = ++previewRequestId;
+    const parsed = new URL(safeUrl);
+    const domain = parsed.hostname.replace(/^www\./i, '');
+    $('previewSiteName').textContent = domain;
+    $('previewDomain').textContent = domain;
+    $('previewTitle').textContent = 'Loading page preview…';
+    $('previewDescription').textContent = '';
+    $('previewUrl').textContent = safeUrl;
+    $('previewFavicon').src = parsed.origin + '/favicon.ico';
+    $('previewFavicon').onerror = () => { $('previewFavicon').src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#eef0f3"/><text x="16" y="22" font-size="19" text-anchor="middle" fill="#69717d">' + domain.charAt(0).toUpperCase() + '</text></svg>'); };
+    $('previewOpen').onclick = () => window.open(previewCurrentUrl, '_blank', 'noopener,noreferrer');
+    $('previewBackdrop').classList.add('open');
+    $('previewSheet').classList.add('open');
+    $('previewBackdrop').setAttribute('aria-hidden', 'false');
+    // Metadata is fetched through a public unfurl endpoint; if unavailable, show a useful URL-based fallback.
+    try {
+      const endpoint = 'https://api.linkmetadata.com/v1/metadata?url=' + encodeURIComponent(safeUrl);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6500);
+      const response = await fetch(endpoint, {signal:controller.signal, headers:{'Accept':'application/json'}});
+      clearTimeout(timeout);
+      if (!response.ok) throw new Error('Metadata unavailable');
+      const data = await response.json();
+      if (requestId !== previewRequestId) return;
+      const title = data.title || data.og?.['og:title'] || domain;
+      const description = data.description || data.og?.['og:description'] || 'Open this link to view the full page.';
+      const siteName = data.site_name || data.siteName || domain;
+      $('previewSiteName').textContent = siteName;
+      $('previewTitle').textContent = title;
+      $('previewDescription').textContent = description;
+      const favicon = data.favicon?.url || data.favicon_url || data.favicon;
+      if (typeof favicon === 'string' && safeHttpUrl(favicon)) $('previewFavicon').src = favicon;
+    } catch (err) {
+      if (requestId !== previewRequestId) return;
+      $('previewTitle').textContent = domain;
+      $('previewDescription').textContent = 'A page preview could not be loaded. Open the link to view its content.';
+    }
+  }
+
+  function renderMessages() {
+    const container = $('messages');
+    const c = activeConversation();
+    if (!c || !c.messages.length) {
+      container.innerHTML = '<div class="welcome">What would you like to talk about?</div>';
+      return;
+    }
+    container.innerHTML = '';
+    for (const msg of c.messages) {
+      const wrap = document.createElement('article');
+      wrap.className = 'message ' + (msg.role === 'user' ? 'user' : 'assistant');
+      const role = document.createElement('div');
+      role.className = 'role';
+      role.textContent = msg.role === 'user' ? 'You' : models[c.model || selectedModel] || 'AI';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      renderMessageContent(bubble, msg.content || '');
+      wrap.append(role, bubble);
+      container.appendChild(wrap);
+    }
+    container.scrollTop = container.scrollHeight;
+  }
+  function renderHistory() {
+    const list = $('historyList');
+    list.innerHTML = '';
+    const q = searchTerm.trim().toLocaleLowerCase();
+    const matches = conversations.filter(c => !q || c.title.toLocaleLowerCase().includes(q) || c.messages.some(m => String(m.content || '').toLocaleLowerCase().includes(q)));
+    $('recentLabel').textContent = q ? 'Search results' : 'Recents';
+    if (!matches.length) {
+      const empty = document.createElement('div');
+      empty.className = 'history-empty';
+      empty.textContent = q ? 'No matching conversations found.' : 'No chat history yet.';
+      list.appendChild(empty);
+      return;
+    }
+    for (const c of matches) {
+      const btn = document.createElement('button');
+      btn.className = 'history-item' + (c.id === currentId ? ' current' : '');
+      btn.textContent = c.title || 'New chat';
+      btn.title = c.title || 'New chat';
+      btn.addEventListener('click', () => {
+        if (suppressNextHistoryClick) { suppressNextHistoryClick = false; return; }
+        openConversation(c.id);
+      });
+      const beginPress = e => {
+        if (e.type === 'mousedown' && e.button !== 0) return;
+        clearTimeout(longPressTimer);
+        longPressTimer = setTimeout(() => { suppressNextHistoryClick = true; showDeleteDialog(c.id); }, 650);
+      };
+      const cancelPress = () => { clearTimeout(longPressTimer); };
+      btn.addEventListener('pointerdown', beginPress);
+      btn.addEventListener('pointerup', cancelPress);
+      btn.addEventListener('pointerleave', cancelPress);
+      btn.addEventListener('pointercancel', cancelPress);
+      btn.addEventListener('contextmenu', e => { e.preventDefault(); showDeleteDialog(c.id); });
+      list.appendChild(btn);
+    }
+  }
+  function openConversation(id) {
+    currentId = id;
+    const c = activeConversation();
+    if (c) selectedModel = c.model || selectedModel;
+    updateModelButtons();
+    renderMessages();
+    renderHistory();
+    closeSidebar();
+  }
+  function updateModelButtons() {
+    const select = $('modelSelect');
+    if (select) select.value = selectedModel;
+  }
+  function openSidebar() {
+    $('overlay').classList.add('open');
+    $('sidebar').classList.add('open');
+    $('searchInput').value = searchTerm;
+    renderHistory();
+  }
+  function closeSidebar() {
+    $('overlay').classList.remove('open');
+    $('sidebar').classList.remove('open');
+  }
+  function resizePrompt() {
+    const el = $('prompt');
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 180) + 'px';
+  }
+  async function sendMessage(text) {
+    if (busy || !text.trim()) return;
+    const settings = await getSettingsDurable();
+    if (settings.model && models[settings.model] && !activeConversation()) selectedModel = settings.model;
+    if (!settings.apiKey) {
+      $('settingsModal').classList.add('open');
+      $('apiKey').focus();
+      setStatus('Please enter your API key in Settings first.');
+      return;
+    }
+    const c = ensureConversation(text);
+    c.model = selectedModel;
+    c.messages.push({role:'user', content:text.trim()});
+    c.updatedAt = Date.now();
+    saveAll(); renderMessages(); renderHistory();
+    $('prompt').value = ''; resizePrompt();
+    busy = true; $('sendBtn').disabled = true; setStatus('Thinking…');
+    const waiting = {role:'assistant', content:'…'};
+    c.messages.push(waiting); renderMessages();
+    try {
+      const base = String(settings.baseUrl || '').trim().replace(/\/+$/, '');
+      if (!base) throw new Error('Please enter the API Base URL in Settings first.');
+      const response = await fetch(base + '/chat/completions', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer ' + settings.apiKey},
+        body:JSON.stringify({
+          model:selectedModel,
+          messages:c.messages.filter(m => m !== waiting).map(m => ({role:m.role,content:m.content})),
+          stream:false
+        })
+      });
+      const raw = await response.text();
+      let data;
+      try { data = JSON.parse(raw); } catch { throw new Error('The server returned invalid JSON (HTTP ' + response.status + ').\n' + raw.slice(0,500)); }
+      if (!response.ok) throw new Error((data.error && (data.error.message || data.error)) || data.message || ('HTTP ' + response.status));
+      const answer = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+      if (typeof answer !== 'string') throw new Error('The API response does not contain choices[0].message.content.');
+      c.messages[c.messages.length - 1] = {role:'assistant', content:answer};
+      c.updatedAt = Date.now();
+      saveAll(); renderMessages(); renderHistory(); setStatus('');
+    } catch (err) {
+      c.messages.pop();
+      c.messages.push({role:'assistant', content:'Request failed: ' + (err && err.message ? err.message : String(err)) + '\n\nCheck your API key, Base URL, model name, and whether the API service allows CORS.'});
+      saveAll(); renderMessages(); renderHistory(); setStatus('Message failed to send');
+    } finally {
+      busy = false; $('sendBtn').disabled = false; $('prompt').focus();
+    }
+  }
+
+  $('previewBackdrop').addEventListener('click', closeLinkPreview);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLinkPreview(); });
+  $('menuBtn').addEventListener('click', openSidebar);
+  $('closeSidebar').addEventListener('click', closeSidebar);
+  $('overlay').addEventListener('click', closeSidebar);
+  $('newChatBtn').addEventListener('click', startNewChat);
+  $('searchForm').addEventListener('submit', e => { e.preventDefault(); searchTerm = $('searchInput').value; renderHistory(); });
+  $('searchInput').addEventListener('input', () => { searchTerm = $('searchInput').value; renderHistory(); });
+  $('prompt').addEventListener('input', resizePrompt);
+  $('prompt').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('chatForm').requestSubmit(); }
+  });
+  $('chatForm').addEventListener('submit', e => { e.preventDefault(); const text = $('prompt').value; sendMessage(text); });
+  function showDeleteDialog(id) {
+    const c = conversations.find(item => item.id === id);
+    if (!c) return;
+    pendingDeleteId = id;
+    $('deleteQuestion').textContent = `Delete “${c.title || 'New chat'}”?`;
+    $('deleteModal').classList.add('open');
+  }
+  function closeDeleteDialog() { $('deleteModal').classList.remove('open'); pendingDeleteId = null; }
+  $('cancelDelete').addEventListener('click', closeDeleteDialog);
+  $('deleteModal').addEventListener('click', e => { if (e.target === $('deleteModal')) closeDeleteDialog(); });
+  $('confirmDelete').addEventListener('click', () => {
+    if (!pendingDeleteId) return;
+    const removedId = pendingDeleteId;
+    conversations = conversations.filter(c => c.id !== removedId);
+    if (currentId === removedId) {
+      currentId = null;
+      const latest = [...conversations].sort((a,b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
+      if (latest) { currentId = latest.id; selectedModel = latest.model || selectedModel; renderMessages(); updateModelButtons(); }
+      else $('messages').innerHTML = '<div class="welcome">What would you like to talk about?</div>';
+    }
+    saveAll(); renderHistory(); closeDeleteDialog(); setStatus('Conversation deleted.');
+  });
+  $('exportBtn').addEventListener('click', () => {
+    const payload = {format:'ota-chat-history', version:1, exportedAt:new Date().toISOString(), conversations};
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'chat-history-' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setStatus(`Exported all ${conversations.length} conversations.`);
+  });
+  $('importBtn').addEventListener('click', () => $('importFile').click());
+  $('importFile').addEventListener('change', async e => {
+    const file = e.target.files && e.target.files[0]; if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      const incoming = Array.isArray(data) ? data : data.conversations;
+      if (!Array.isArray(incoming) || incoming.some(c => !c || typeof c.id !== 'string' || !Array.isArray(c.messages))) throw new Error('Invalid JSON format: no valid conversations were found.');
+      const merged = new Map(conversations.map(c => [c.id, c]));
+      for (const c of incoming) merged.set(c.id, c);
+      conversations = [...merged.values()].sort((a,b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      saveAll(); renderHistory();
+      if (!currentId && conversations.length) { currentId = conversations[0].id; selectedModel = conversations[0].model || selectedModel; renderMessages(); updateModelButtons(); }
+      setStatus(`Import complete. There are now ${conversations.length} conversations.`); closeSidebar();
+    } catch (err) { setStatus('Import failed: ' + (err.message || String(err))); }
+    e.target.value = '';
+  });
+
+  function closeSettings() { $('settingsModal').classList.remove('open'); }
+  $('closeSettings').addEventListener('click', closeSettings);
+  $('cancelSettings').addEventListener('click', closeSettings);
+  $('settingsModal').addEventListener('click', e => { if (e.target === $('settingsModal')) closeSettings(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeSidebar(); closeSettings(); closeDeleteDialog(); }
+  });
+
+  // Hydrate from IndexedDB on startup, then mirror the restored data to localStorage.
+  (async () => {
+    try {
+      const durableChats = await dbGet(STORAGE_KEY);
+      if (Array.isArray(durableChats) && durableChats.length) {
+        const local = loadConversations();
+        conversations = local.length ? local : durableChats;
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations)); } catch {}
+      }
+      const durableSettings = await dbGet(SETTINGS_KEY);
+      if (durableSettings) {
+        if (durableSettings.model && models[durableSettings.model]) selectedModel = durableSettings.model;
+        window.__otaSettingsCache = durableSettings;
+        try { if (!localStorage.getItem(SETTINGS_KEY)) localStorage.setItem(SETTINGS_KEY, JSON.stringify(durableSettings)); } catch {}
+      }
+    } catch (e) { /* localStorage fallback remains available */ }
+    currentId = null;
+    $('messages').innerHTML = '<div class="welcome">What would you like to talk about?</div>';
+    updateModelButtons(); renderHistory();
+  })();
+})();
+</script>
+<script>
+(function () {
+  const byId = id => document.getElementById(id);
+  const KEY = 'ota_chat_settings_v1';
+  const DB = 'ota_chat_persistent_v1';
+  const STORE = 'records';
+  function readSettings() {
+    try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (_) { return {}; }
+  }
+  function openDialog() {
+    const saved = readSettings();
+    byId('apiKey').value = saved.apiKey || '';
+    byId('baseUrl').value = saved.baseUrl || '';
+    byId('modelSelect').value = saved.model || 'gpt-5.6-sol';
+    byId('settingsModal').classList.add('open');
+  }
+  function saveToIndexedDB(value) {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) return reject(new Error('IndexedDB is unavailable'));
+      const request = indexedDB.open(DB, 1);
+      request.onupgradeneeded = () => { if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE); };
+      request.onerror = () => reject(request.error || new Error('Failed to open database'));
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(value, KEY);
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = tx.onabort = () => { db.close(); reject(tx.error || new Error('Failed to write to database')); };
+      };
+    });
+  }
+  byId('settingsBtn').addEventListener('click', openDialog);
+  byId('saveSettings').addEventListener('click', async function () {
+    const apiKey = byId('apiKey').value.trim();
+    const baseUrl = byId('baseUrl').value.trim().replace(/\/+$/, '');
+    const model = byId('modelSelect').value;
+    if (!baseUrl) { byId('baseUrl').focus(); return; }
+    const settings = { apiKey, baseUrl, model };
+    let localSaved = false;
+    try { localStorage.setItem(KEY, JSON.stringify(settings)); localSaved = true; } catch (_) {}
+    try {
+      await saveToIndexedDB(settings);
+      byId('settingsModal').classList.remove('open');
+      byId('status').textContent = 'Settings saved.';
+      // Reload so the main chat logic consistently adopts the newly selected model and settings.
+      window.location.reload();
+    } catch (err) {
+      if (localSaved) {
+        byId('settingsModal').classList.remove('open');
+        byId('status').textContent = 'Settings saved to localStorage; browser database is unavailable.';
+        window.location.reload();
+      } else {
+        byId('status').textContent = 'Save failed: ' + (err && err.message ? err.message : String(err));
+      }
+    }
+  });
+  byId('closeSettings').addEventListener('click', () => byId('settingsModal').classList.remove('open'));
+  byId('cancelSettings').addEventListener('click', () => byId('settingsModal').classList.remove('open'));
+  byId('settingsModal').addEventListener('click', e => { if (e.target === byId('settingsModal')) byId('settingsModal').classList.remove('open'); });
+})();
+</script>
+<script>
+// PWA support: manifest.json and sw.js are supplied separately by the site owner.
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('Service Worker registered successfully! Scope:', reg.scope))
+      .catch(err => console.warn('Service Worker registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>
