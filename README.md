@@ -8,6 +8,9 @@ A lightweight, responsive browser-based chat interface for an OpenAI-compatible 
 
 - **Chat with multiple models** through a configurable `/chat/completions` endpoint.
 - **Model selection in Settings**, including the following model IDs, in the configured order:
+  - `gpt-6.1-sol` — 6.1 Sol
+  - `gpt-6-astra` — 6 Astra
+  - `gpt-6-sol` — 6 Sol
   - `gpt-5.6-sol` — 5.6 Sol
   - `gpt-5.6-terra` — 5.6 Terra
   - `gpt-5.6-luna` — 5.6 Luna
@@ -82,7 +85,7 @@ Only import JSON files you trust.
 Markdown-style links such as:
 
 ```markdown
-([medlineplus.gov](https://medlineplus.gov/ency/article/002208.htm?utm_source=openai))
+([example.com](https://example.com/article/000000.htm?utm_source=openai))
 ```
 
 can be represented by a compact domain button. Clicking the button opens a bottom-sheet preview with the website domain and, when available, page title and description. Users can open the original URL from the preview or dismiss the sheet by clicking the backdrop.
